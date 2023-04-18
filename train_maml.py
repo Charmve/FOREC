@@ -5,6 +5,7 @@ from torch.autograd import Variable
 from torch.utils.data import DataLoader, Dataset, ConcatDataset
 import learn2learn as l2l
 
+import sys
 sys.path.insert(1, 'src')
 from model import GMF, MLP, NeuMF
 from utils import *
@@ -24,7 +25,7 @@ def create_arg_parser():
     parser.add_argument('--num_epoch', type=int, default=25, help='number of epoches')
     parser.add_argument('--batch_size', type=int, default=1024, help='batch size') # is kshots here
     parser.add_argument('--num_neg', type=int, default=4, help='number of negatives to sample during training')
-    parser.add_argument('--cuda', action='store_true', help='use of cuda')
+    parser.add_argument('--cuda', default=False, action='store_true', help='use of cuda')
     parser.add_argument('--seed', type=int, default=42, help='manual seed init')
     
     # output arguments 
@@ -166,7 +167,8 @@ def main():
         config = get_model_config(args.model_selection)
         config['batch_size'] = args.batch_size
         config['optimizer'] = 'adam'
-        config['use_cuda'] = args.cuda
+        # config['use_cuda'] = args.cuda
+        config['use_cuda'] = False
         config['device_id'] = 0
         config['save_trained'] = True
         config['load_pretrained'] = True
@@ -198,7 +200,7 @@ def main():
         ## Train
         ############
         for epoch in range(args.num_epoch):
-            print('Epoch {} starts !'.format(epoch))
+            print('Epoch {}/{} starts !'.format(epoch,args.num_epoch), end='\r')
             sys.stdout.flush()
             
             # train the model for some certain iterations
@@ -259,12 +261,15 @@ def main():
                 # Average the accumulated gradients and optimize
                 for p in maml.parameters():
                     p.grad.data.mul_(1.0 / meta_batch_size)
-                opt.step()    
+                opt.step() 
+
+            print('*' * 2*epoch , end='\r')   
         
         
         ############
         ## TEST
         ############
+        print("\nMAML - Start to testing...")
         cur_model_results = {}
         for mar_index, cur_market in enumerate(args.markets):
             # validation data 
@@ -293,7 +298,7 @@ def main():
                 valid_ov, valid_ind = test_model(learner, config, task_valid_all[cur_market][1], task_valid_all[cur_market][2])
                 cur_ndcg = valid_ov['ndcg_cut_10']
                 cur_recall = valid_ov['recall_10']
-                print( f'[pytrec_based] Market: {cur_market} step{cur_test_adapt_step} tgt_valid: \t NDCG@10: {cur_ndcg} \t R@10: {cur_recall}')
+                print( f'[pytrec_based] Market: {cur_market} step{cur_test_adapt_step} tgt_valid: \t NDCG@10: {cur_ndcg} \t HR@10: {cur_recall}')
 
                 cur_model_results[f'valid_{cur_market}_step{cur_test_adapt_step}'] = {
                     'agg': valid_ov,
@@ -304,7 +309,7 @@ def main():
                 test_ov, test_ind = test_model(learner, config, task_test_all[cur_market][1], task_test_all[cur_market][2])
                 cur_ndcg = test_ov['ndcg_cut_10']
                 cur_recall = test_ov['recall_10']
-                print( f'[pytrec_based] Market: {cur_market} step{cur_test_adapt_step} tgt_test: \t NDCG@10: {cur_ndcg} \t R@10: {cur_recall} \n\n')
+                print( f'[pytrec_based] Market: {cur_market} step{cur_test_adapt_step} tgt_test: \t NDCG@10: {cur_ndcg} \t HR@10: {cur_recall} \n\n')
 
                 cur_model_results[f'test_{cur_market}_step{cur_test_adapt_step}'] = {
                     'agg': test_ov,

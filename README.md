@@ -18,6 +18,16 @@ We use conda for our experimentations. Please refer to the `requirements.txt` fo
 - [learn2learn](https://github.com/learnables/learn2learn)
 - [pytrec_eval](https://github.com/cvangysel/pytrec_eval)
 
+## Quick start
+
+```
+conda env create -f environment.yaml
+conda activate forec
+python prepare_data.py
+
+python train_maml.py
+```
+
 ## DATA
 The `DATA` folder in this repository contains the cleaned and proccessed data that we use for our experiments. Please note that we made a few changes with releasing the data, and you might see slightly different numbers compared to the reported numbers in the paper. 
 
@@ -25,10 +35,13 @@ If you wish to repeat the process on other categories of data or change the data
 
 
 ## Train the baseline and FOREC models (with Evaluations):
+
 We provide three training scripts, for training baselines (single market, GMF, MLP, NMF++ and MAML) as well as FOREC model. Here are the list of models that for training and evaluating with the scripts provided:
 - `train_base.py` for GMF, MLP, NMF and their ++ versions as cross-market models
 - `train_maml.py` for training our MAML baseline
 - `train_forec.py` for trainig our proposed FOREC model
+
+*Before being able to run MAML and FOREC models, we need to train corrosponding NMF++ models (and for NMF, we need GMF++ and MLP++ models trained first). For this purpose, use 'train_all.py'.
 
 Note that since MAML and FOREC works on NMF architecture, you need to have same setting NMF++ model trained before proceeding with the MAML and FOREC training scripts. In addition, NMF requires that GMF and MLP models are trained, as it combines these two models into the architecture with some additional layers. See the middle part of the FOREC schema above. 
 

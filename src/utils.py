@@ -1,6 +1,7 @@
 """
     Some handy functions for pytroch model training ...
 """
+from distutils.command import config
 import torch
 import sys
 # sys.path.insert(1, 'qrec')
@@ -53,9 +54,12 @@ def save_checkpoint(model, model_dir):
 
 
 def resume_checkpoint(model, model_dir, device_id, maml_bool=False):
-    state_dict = torch.load(model_dir,
-                        map_location=lambda storage, loc: storage.cuda(device=device_id))  # ensure all storage are on gpu
-    
+    # if config['use_cuda'] is True:
+    #     state_dict = torch.load(model_dir,
+    #                     map_location=lambda storage, loc: storage.cuda(device=device_id))  # ensure all storage are on gpu
+    # else:
+    state_dict = torch.load(model_dir)
+
     if maml_bool:
         for key in list(state_dict.keys()):
             new_key = key.replace('module.', '')
@@ -69,6 +73,8 @@ def use_cuda(enabled, device_id=0):
     if enabled:
         assert torch.cuda.is_available(), 'CUDA is not available'
         torch.cuda.set_device(device_id)
+    else:
+        print('Could not use cuda.')
 
 
 def use_optimizer(network, params):
@@ -110,6 +116,7 @@ def get_model_cid_dir(args, model_type, flip=False):
         tmp_exp_name = f'{args.data_augment_method}'
         tmp_src_markets = 'single'
     
+    # checkpoints/de_nmf_uk_full_aug_concat_exp_name.pickle
     model_dir = f'checkpoints/{tgt_market}_{model_type}_{tmp_src_markets}_{tmp_exp_name}_{args.exp_name}.model'
     cid_dir = f'checkpoints/{tgt_market}_{model_type}_{tmp_src_markets}_{tmp_exp_name}_{args.exp_name}.pickle'
     return model_dir, cid_dir

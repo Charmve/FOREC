@@ -16,7 +16,9 @@ import torch
 from torch.autograd import Variable
 from torch.utils.data import DataLoader, Dataset, ConcatDataset
 
+import sys
 sys.path.insert(1, 'src')
+
 from model import GMF, MLP, NeuMF
 from utils import *
 from data import *
@@ -35,12 +37,12 @@ def create_arg_parser():
     parser.add_argument('--num_epoch', type=int, default=25, help='number of epoches')
     parser.add_argument('--batch_size', type=int, default=1024, help='batch size')
     parser.add_argument('--num_neg', type=int, default=4, help='number of negatives to sample during training')
-    parser.add_argument('--cuda', action='store_true', help='use of cuda')
+    parser.add_argument('--cuda', default=False, action='store_true', help='use of cuda')
     parser.add_argument('--seed', type=int, default=42, help='manual seed init')
     
     # output arguments 
-    parser.add_argument('--exp_name', help='name the experiment',type=str, default='exp_name')
-    parser.add_argument('--exp_output', help='output results .json file',type=str, default='')
+    parser.add_argument('--exp_name', help='name the experiment', type=str, default='exp_name')
+    parser.add_argument('--exp_output', help='output results .json file', type=str, default='output/result.json')
     
     # data arguments 
     parser.add_argument('--data_dir', help='dataset directory', type=str, default='DATA/')
@@ -78,8 +80,8 @@ def train_and_test_model(args, config, model, train_dataloader, valid_dataloader
     best_eval_res = {}
     all_eval_res = {}
     for epoch in range(args.num_epoch):
-        print('Epoch {} starts !'.format(epoch))
-        model.train()
+        print('Epoch {}/{} starts !'.format(epoch,args.num_epoch), end='\r')
+s s        model.train()
         total_loss = 0
 
         # train the model for some certain iterations
@@ -97,6 +99,7 @@ def train_and_test_model(args, config, model, train_dataloader, valid_dataloader
                     train_user_ids, train_item_ids, train_targets = next(new_train_iterator)
                     
                 if config['use_cuda'] is True:
+                    print("====> use cuda ...")
                     train_user_ids, train_item_ids, train_targets = train_user_ids.cuda(), train_item_ids.cuda(), train_targets.cuda()
                 opt.zero_grad()
                 ratings_pred = model(train_user_ids, train_item_ids)
@@ -105,16 +108,17 @@ def train_and_test_model(args, config, model, train_dataloader, valid_dataloader
                 opt.step()    
                 total_loss += loss.item()
         sys.stdout.flush()
-        print('-' * 80)
+        print('-' * 2*epoch , end='\r')
     
     ############
     ## TEST
     ############
+    print("\nBase - Start to testing...")
     #if args.model_selection=='nmf':
     valid_ov, valid_ind = test_model(model, config, valid_dataloader, valid_qrel)
     cur_ndcg = valid_ov['ndcg_cut_10']
     cur_recall = valid_ov['recall_10']
-    print( f'[pytrec_based] tgt_valid: \t NDCG@10: {cur_ndcg} \t R@10: {cur_recall}')
+    print( f'[pytrec_based] tgt_valid: \t NDCG@10: {cur_ndcg} \t HR@10: {cur_recall}')
 
     all_eval_res[f'valid'] = {
         'agg': valid_ov,
@@ -124,7 +128,7 @@ def train_and_test_model(args, config, model, train_dataloader, valid_dataloader
     test_ov, test_ind = test_model(model, config, test_dataloader, test_qrel)
     cur_ndcg = test_ov['ndcg_cut_10']
     cur_recall = test_ov['recall_10']
-    print( f'[pytrec_based] tgt_test: \t NDCG@10: {cur_ndcg} \t R@10: {cur_recall} \n\n')
+    print( f'[pytrec_based] tgt_test: \t NDCG@10: {cur_ndcg} \t HR@10: {cur_recall} \n\n')
 
     all_eval_res[f'test'] = {
         'agg': test_ov,
@@ -231,7 +235,9 @@ def main():
         config = get_model_config(args.model_selection)
         config['batch_size'] = args.batch_size
         config['optimizer'] = 'adam'
-        config['use_cuda'] = args.cuda
+        # config['use_cuda'] = args.cuda
+        config['use_cuda'] = False
+        print("====> config['use_cuda']:", config['use_cuda'])
         config['device_id'] = 0
         config['save_trained'] = True
         config['load_pretrained'] = True
@@ -255,6 +261,7 @@ def main():
                 model.load_pretrain_weights(args)
 
         if config['use_cuda'] is True:
+            print("====> use cuda ...")
             use_cuda(True, config['device_id'])
             model.cuda()
         print(model)
